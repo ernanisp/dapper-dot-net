@@ -1,10 +1,11 @@
 Dapper - a simple object mapper for .Net
 ========================================
+[![Build status](https://ci.appveyor.com/api/projects/status/8rbgoxqio76ynj4h?svg=true)](https://ci.appveyor.com/project/StackExchange/dapper)
 
 Release Notes
 -------------
 
-[link](http://stackexchange.github.io/dapper-dot-net/)
+[Located at stackexchange.github.io/Dapper](https://stackexchange.github.io/Dapper/)
 
 
 Features
@@ -15,8 +16,6 @@ It provides 3 helpers:
 
 Execute a query and map the results to a strongly typed List
 ------------------------------------------------------------
-
-Note: all extension methods assume the connection is already open, they will fail if the connection is closed.
 
 ```csharp
 public static IEnumerable<T> Query<T>(this IDbConnection cnn, string sql, object param = null, SqlTransaction transaction = null, bool buffered = true)
@@ -121,115 +120,45 @@ The performance tests are broken in to 3 lists:
 
 ### Performance of SELECT mapping over 500 iterations - POCO serialization
 
-<table>
-  <tr>
-  	<th>Method</th>
-		<th>Duration</th>		
-		<th>Remarks</th>
-	</tr>
-	<tr>
-		<td>Hand coded (using a <code>SqlDataReader</code>)</td>
-		<td>47ms</td>
-		<td rowspan="9"><a href="http://www.toptensoftware.com/blog/posts/94-PetaPoco-More-Speed">Can be faster</a></td>
-	</tr>
-	<tr>
-		<td>Dapper <code>ExecuteMapperQuery<Post></code></td>
-		<td>49ms</td>
-	</tr>
-	<tr>
-		<td><a href="https://github.com/ServiceStack/ServiceStack.OrmLite">ServiceStack.OrmLite</a> (QueryById)</td>
-		<td>50ms</td>
-	</tr>
-	<tr>
-		<td><a href="http://www.toptensoftware.com/petapoco/">PetaPoco</a></td>
-		<td>52ms</td>
-	</tr>
-	<tr>
-		<td>BLToolkit</td>
-		<td>80ms</td>
-	</tr>
-	<tr>
-		<td>SubSonic CodingHorror</td>
-		<td>107ms</td>
-	</tr>
-	<tr>
-		<td>NHibernate SQL</td>
-		<td>104ms</td>
-	</tr>
-	<tr>
-		<td>Linq 2 SQL <code>ExecuteQuery</code></td>
-		<td>181ms</td>
-	</tr>
-	<tr>
-		<td>Entity framework <code>ExecuteStoreQuery</code></td>
-		<td>631ms</td>
-	</tr>
-</table>
+
+
+| Method                                              | Duration | Remarks |
+| --------------------------------------------------- | -------- | ------- |
+| Hand coded (using a `SqlDataReader`)                | 47ms     | 
+| Dapper `ExecuteMapperQuery`                         | 49ms     |
+| [ServiceStack.OrmLite](https://github.com/ServiceStack/ServiceStack.OrmLite) (QueryById) | 50ms |
+| [PetaPoco](http://www.toptensoftware.com/petapoco/) | 52ms     | [Can be faster](http://www.toptensoftware.com/blog/posts/94-PetaPoco-More-Speed) |
+| BLToolkit                                           | 80ms     |
+| SubSonic CodingHorror                               | 107ms    |
+| NHibernate SQL                                      | 104ms    |
+| Linq 2 SQL `ExecuteQuery`                           | 181ms    |
+| Entity framework `ExecuteStoreQuery`                | 631ms    |
 
 ### Performance of SELECT mapping over 500 iterations - dynamic serialization
 
-<table>
-	<tr>
-		<th>Method</th>
-		<th>Duration</th>		
-		<th>Remarks</th>
-	</tr>
-	<tr>
-		<td>Dapper <code>ExecuteMapperQuery</code> (dynamic)</td>
-		<td>48ms</td>
-		<td rowspan="3">&nbsp;</td>
-	</tr>
-	<tr>
-		<td><a href="https://github.com/FransBouma/Massive">Massive</a></td>
-		<td>52ms</td>
-	</tr>
-	<tr>
-		<td><a href="https://github.com/markrendle/Simple.Data">Simple.Data</a></td>
-		<td>95ms</td>
-	</tr>
-</table>
+| Method                                                   | Duration | Remarks |
+| -------------------------------------------------------- | -------- | ------- |
+| Dapper `ExecuteMapperQuery` (dynamic)                    | 48ms     |
+| [Massive](https://github.com/FransBouma/Massive)         | 52ms     |
+| [Simple.Data](https://github.com/markrendle/Simple.Data) | 95ms     |
 
 
 ### Performance of SELECT mapping over 500 iterations - typical usage
 
-<table>
-	<tr>
-		<th>Method</th>
-		<th>Duration</th>		
-		<th>Remarks</th>
-	</tr>
-	<tr>
-		<td>Linq 2 SQL CompiledQuery</td>
-		<td>81ms</td>
-		<td>Not super typical involves complex code</td>
-	</tr>
-	<tr>
-		<td>NHibernate HQL</td>
-		<td>118ms</td>
-		<td>&nbsp;</td>
-	</tr>
-	<tr>
-		<td>Linq 2 SQL</td>
-		<td>559ms</td>
-		<td>&nbsp;</td>
-	</tr>
-	<tr>
-		<td>Entity framework</td>
-		<td>859ms</td>
-		<td>&nbsp;</td>
-	</tr>
-	<tr>
-		<td>SubSonic ActiveRecord.SingleOrDefault</td>
-		<td>3619ms</td>
-		<td>&nbsp;</td>
-	</tr>
-</table>
+| Method                                | Duration | Remarks |
+| ------------------------------------- | -------- | ------- |
+| Linq 2 SQL CompiledQuery              | 81ms     | Not super typical involves complex code |
+| NHibernate HQL                        | 118ms    |
+| Linq 2 SQL                            | 559ms    |
+| Entity framework                      | 859ms    |
+| SubSonic ActiveRecord.SingleOrDefault | 3619ms   |
 
-Performance benchmarks are available [here](https://github.com/StackExchange/dapper-dot-net/blob/master/Dapper.Tests/PerformanceTests.cs).
+
+Performance benchmarks are available [here](https://github.com/StackExchange/Dapper/tree/master/Dapper.Tests.Performance).
 
 Feel free to submit patches that include other ORMs - when running benchmarks, be sure to compile in Release and not attach a debugger (ctrl F5).
 
-Alternatively, you might prefer Frans Bouma's [RawDataAccessBencher](https://github.com/FransBouma/RawDataAccessBencher) test suite.
+Alternatively, you might prefer Frans Bouma's [RawDataAccessBencher](https://github.com/FransBouma/RawDataAccessBencher) test suite or [OrmBenchmark](https://github.com/InfoTechBridge/OrmBenchmark).
 
 Parameterized queries
 ---------------------
@@ -242,7 +171,7 @@ new {A = 1, B = "b"} // A will be mapped to the param @A, B to the param @B
 
 List Support
 ------------
-Dapper allow you to pass in IEnumerable<int> and will automatically parameterize your query.
+Dapper allows you to pass in IEnumerable<int> and will automatically parameterize your query.
 
 For example:
 
@@ -268,6 +197,40 @@ Dapper allows you to map a single row to multiple objects. This is a key feature
 
 Example:
 
+Consider 2 classes: `Post` and `User`
+
+```csharp
+class Post
+{
+    public int Id { get; set; }
+    public string Title { get; set; }
+    public string Content { get; set; }
+    public User Owner { get; set; }
+}
+
+class User
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+```
+
+Now let us say that we want to map a query that joins both the posts and the users table. Until now if we needed to combine the result of 2 queries, we'd need a new object to express it but it makes more sense in this case to put the `User` object inside the `Post` object.
+
+This is the user case for multi mapping. You tell dapper that the query returns a `Post` and a `User` object and then give it a function describing what you want to do with each of the rows containing both a `Post` and a `User` object. In our case, we want to take the user object and put it inside the post object. So we write the function: 
+
+```csharp
+(post, user) => { post.Owner = user; return post; }
+```
+
+The 3 type arguments to the `Query` method specify what objects dapper should use to deserialize the row and what is going to be returned. We're going to interpret both rows as a combination of `Post` and `User` and we're returning back a `Post` object. Hence the type declaration becomes
+
+```csharp
+<Post, User, Post>
+```
+
+Everything put together, looks like this:
+
 ```csharp
 var sql = 
 @"select * from #Posts p 
@@ -283,7 +246,7 @@ post.Owner.Name.IsEqualTo("Sam");
 post.Owner.Id.IsEqualTo(99);
 ```
 
-**important note** Dapper assumes your Id columns are named "Id" or "id", if your primary key is different or you would like to split the wide row at point other than "Id", use the optional 'splitOn' parameter.
+Dapper is able to split the returned row by making an assumption that your Id columns are named `Id` or `id`. If your primary key is different or you would like to split the row at a point other than `Id`, use the optional `splitOn` parameter.
 
 Multiple Results
 ---------------------
@@ -340,26 +303,68 @@ Query<Thing>("select * from Thing where Name = @Name", new {Name = new DbString 
 
 On SQL Server it is crucial to use the unicode when querying unicode and ansi when querying non unicode.
 
+Type Switching Per Row
+---------------------
+
+Usually you'll want to treat all rows from a given table as the same data type. However, there are some circumstances where it's useful to be able to parse different rows as different data types. This is where `IDataReader.GetRowParser` comes in handy.
+
+Imagine you have a database table named "Shapes" with the columns: `Id`, `Type`, and `Data`, and you want to parse its rows into `Circle`, `Square`, or `Triangle` objects based on the value of the Type column.
+
+```csharp
+var shapes = new List<IShape>();
+using (var reader = connection.ExecuteReader("select * from Shapes"))
+{
+    // Generate a row parser for each type you expect.
+    // The generic type <IShape> is what the parser will return.
+    // The argument (typeof(*)) is the concrete type to parse.
+    var circleParser = reader.GetRowParser<IShape>(typeof(Circle));
+    var squareParser = reader.GetRowParser<IShape>(typeof(Square));
+    var triangleParser = reader.GetRowParser<IShape>(typeof(Triangle));
+  	
+  	var typeColumnIndex = reader.GetOrdinal("Type");
+  	
+  	while (reader.Read())
+    {
+        IShape shape;
+        var type = (ShapeType)reader.GetInt32(typeColumnIndex);
+        switch (type)
+        {
+          	case ShapeType.Circle:
+            	shape = circleParser(reader);
+            	break;
+            case ShapeType.Square:
+            	shape = squareParser(reader);
+            	break;
+          	case ShapeType.Triangle:
+            	shape = triangleParser(reader);
+            	break;
+          	default:
+            	throw new NotImplementedException();
+        }
+      
+      	shapes.Add(shape);
+    }
+}
+```
+
 Limitations and caveats
 ---------------------
 Dapper caches information about every query it runs, this allow it to materialize objects quickly and process parameters quickly. The current implementation caches this information in a ConcurrentDictionary object. The objects it stores are never flushed. If you are generating SQL strings on the fly without using parameters it is possible you will hit memory issues. We may convert the dictionaries to an LRU Cache.
 
-Dapper's simplicity means that many feature that ORMs ship with are stripped out, there is no identity map, there are no helpers for update / select and so on.
-
-Dapper does not manage your connection's lifecycle, it assumes the connection it gets is open AND has no existing datareaders enumerating (unless MARS is enabled)
+Dapper's simplicity means that many feature that ORMs ship with are stripped out. It worries  about the 95% scenario, and gives you the tools you need most of the time. It doesn't attempt to solve every problem.
 
 Will Dapper work with my DB provider?
 ---------------------
-Dapper has no DB specific implementation details, it works across all .NET ADO providers including [SQLite](http://www.sqlite.org/), SQL CE, Firebird, Oracle, MySQL, PostgreSQL and SQL Server.
+Dapper has no DB specific implementation details, it works across all .NET ADO providers including [SQLite](https://www.sqlite.org/), SQL CE, Firebird, Oracle, MySQL, PostgreSQL and SQL Server.
 
 Do you have a comprehensive list of examples?
 ---------------------
-Dapper has a comprehensive test suite in the [test project](https://github.com/StackExchange/dapper-dot-net/blob/master/Dapper.Tests/Tests.cs)
+Dapper has a comprehensive test suite in the [test project](https://github.com/StackExchange/dapper-dot-net/blob/master/Dapper.Tests)
 
 Who is using this?
 ---------------------
 Dapper is in production use at:
 
-[Stack Overflow](http://stackoverflow.com/), [helpdesk](https://www.jitbit.com/web-helpdesk/)
+[Stack Overflow](https://stackoverflow.com/), [helpdesk](https://www.jitbit.com/web-helpdesk/)
 
 (if you would like to be listed here let me know)
