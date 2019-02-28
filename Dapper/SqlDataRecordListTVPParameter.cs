@@ -1,8 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Data;
-using System.Reflection;
-#if !COREFX
+using System.Linq;
+
 namespace Dapper
 {
     /// <summary>
@@ -23,18 +22,6 @@ namespace Dapper
             this.typeName = typeName;
         }
 
-        private static readonly Action<System.Data.SqlClient.SqlParameter, string> setTypeName;
-
-        static SqlDataRecordListTVPParameter()
-        {
-            var prop = typeof(System.Data.SqlClient.SqlParameter).GetProperty(nameof(System.Data.SqlClient.SqlParameter.TypeName), BindingFlags.Instance | BindingFlags.Public);
-            if (prop != null && prop.PropertyType == typeof(string) && prop.CanWrite)
-            {
-                setTypeName = (Action<System.Data.SqlClient.SqlParameter, string>)
-                    Delegate.CreateDelegate(typeof(Action<System.Data.SqlClient.SqlParameter, string>), prop.GetSetMethod());
-            }
-        }
-
         void SqlMapper.ICustomQueryParameter.AddParameter(IDbCommand command, string name)
         {
             var param = command.CreateParameter();
@@ -45,7 +32,7 @@ namespace Dapper
 
         internal static void Set(IDbDataParameter parameter, IEnumerable<Microsoft.SqlServer.Server.SqlDataRecord> data, string typeName)
         {
-            parameter.Value = (object)data ?? DBNull.Value;
+            parameter.Value = data != null && data.Any() ? data : null;
             if (parameter is System.Data.SqlClient.SqlParameter sqlParam)
             {
                 sqlParam.SqlDbType = SqlDbType.Structured;
@@ -54,4 +41,3 @@ namespace Dapper
         }
     }
 }
-#endif

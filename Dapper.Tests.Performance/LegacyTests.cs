@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Linq;
@@ -19,8 +19,14 @@ using ServiceStack.OrmLite.Dapper;
 using Susanoo;
 using System.Configuration;
 using System.Threading.Tasks;
+using Dapper.Tests.Performance.Dashing;
 using Dapper.Tests.Performance.EntityFrameworkCore;
+using Dashing;
 using Microsoft.EntityFrameworkCore;
+using Belgrade.SqlClient;
+using DevExpress.Xpo;
+using Dapper.Tests.Performance.Xpo;
+using DevExpress.Data.Filtering;
 
 namespace Dapper.Tests.Performance
 {
@@ -81,12 +87,16 @@ namespace Dapper.Tests.Performance
                     }
                 }
 
+                Console.WriteLine("|Time|Framework|");
                 foreach (var test in this.OrderBy(t => t.Watch.ElapsedMilliseconds))
                 {
                     var ms = test.Watch.ElapsedMilliseconds.ToString();
+                    Console.Write("|");
                     Console.Write(ms);
                     Program.WriteColor("ms ".PadRight(8 - ms.Length), ConsoleColor.DarkGray);
-                    Console.WriteLine(test.Name);
+                    Console.Write("|");
+                    Console.Write(test.Name);
+                    Console.WriteLine("|");
                 }
             }
         }
@@ -145,7 +155,7 @@ namespace Dapper.Tests.Performance
 
                     var entityContext2 = new EFContext(connection);
                     tests.Add(id => entityContext2.Database.SqlQuery<Post>("select * from Posts where Id = {0}", id).First(), "Entity Framework: SqlQuery");
-                    
+
                     var entityContext3 = new EFContext(connection);
                     tests.Add(id => entityContext3.Posts.AsNoTracking().First(p => p.Id == id), "Entity Framework: No Tracking");
                 }, "Entity Framework");
@@ -181,6 +191,15 @@ namespace Dapper.Tests.Performance
                     tests.Add(id => mapperConnection3.Get<Post>(id), "Dapper.Contrib");
                 }, "Dapper");
 
+                // Dashing
+                Try(() =>
+                {
+                    var config = new DashingConfiguration();
+                    var database = new SqlDatabase(config, ConnectionString);
+                    var session = database.BeginTransactionLessSession(GetOpenConnection());
+                    tests.Add(id => session.Get<Dashing.Post>(id), "Dashing Get");
+                }, "Dashing");
+
                 // Massive
                 Try(() =>
                 {
@@ -210,12 +229,12 @@ namespace Dapper.Tests.Performance
                 Try(() =>
                 {
                     var nhSession1 = NHibernateHelper.OpenSession();
-                    tests.Add(id => nhSession1.CreateSQLQuery(@"select * from Posts where Id = :id")
+                    tests.Add(id => nhSession1.CreateSQLQuery("select * from Posts where Id = :id")
                         .SetInt32("id", id)
                         .List(), "NHibernate: SQL");
 
                     var nhSession2 = NHibernateHelper.OpenSession();
-                    tests.Add(id => nhSession2.CreateQuery(@"from Post as p where p.Id = :id")
+                    tests.Add(id => nhSession2.CreateQuery("from Post as p where p.Id = :id")
                         .SetInt32("id", id)
                         .List(), "NHibernate: HQL");
 
@@ -233,18 +252,11 @@ namespace Dapper.Tests.Performance
                     tests.Add(id => nhSession5.Get<Post>(id), "NHibernate: Session.Get");
                 }, "NHibernate");
 
-                // Simple.Data
-                Try(() =>
-                {
-                    var sdb = Simple.Data.Database.OpenConnection(ConnectionString);
-                    tests.Add(id => sdb.Posts.FindById(id).FirstOrDefault(), "Simple.Data");
-                }, "Simple.Data");
-
                 // Belgrade
                 Try(() =>
                 {
                     var query = new Belgrade.SqlClient.SqlDb.QueryMapper(ConnectionString);
-                    tests.AsyncAdd(id => query.ExecuteReader("SELECT TOP 1 * FROM Posts WHERE Id = " + id,
+                    tests.AsyncAdd(id => query.Sql("SELECT TOP 1 * FROM Posts WHERE Id = @Id").Param("Id", id).Map(
                         reader =>
                         {
                             var post = new Post();
@@ -266,7 +278,8 @@ namespace Dapper.Tests.Performance
                 }, "Belgrade Sql Client");
 
                 //Susanoo
-                Try(() => {
+                Try(() =>
+                {
                     var susanooDb = new DatabaseManager(connection);
 
                     var susanooPreDefinedCommand =
@@ -307,7 +320,8 @@ namespace Dapper.Tests.Performance
                 }, "ServiceStack.OrmLite");
 
                 // Hand Coded
-                Try(() => {
+                Try(() =>
+                {
                     var postCommand = new SqlCommand()
                     {
                         Connection = connection,
@@ -341,7 +355,7 @@ namespace Dapper.Tests.Performance
                         }
                     }, "Hand Coded");
 
-#if !COREFX
+#if !NETSTANDARD1_3
                     var table = new DataTable
                     {
                         Columns =
@@ -374,6 +388,30 @@ namespace Dapper.Tests.Performance
                     }, "DataTable via IDataReader.GetValues");
 #endif
                 }, "Hand Coded");
+
+                // DevExpress.XPO
+                Try(() =>
+                {
+                    IDataLayer dataLayer = XpoDefault.GetDataLayer(connection, DevExpress.Xpo.DB.AutoCreateOption.SchemaAlreadyExists);
+                    dataLayer.Dictionary.GetDataStoreSchema(typeof(Xpo.Post));
+                    UnitOfWork session = new UnitOfWork(dataLayer, dataLayer);
+                    session.IdentityMapBehavior = IdentityMapBehavior.Strong;
+                    session.TypesManager.EnsureIsTypedObjectValid();
+
+                    tests.Add(id => session.Query<Xpo.Post>().First(p => p.Id == id), "DevExpress.XPO: Query<T>");
+                    tests.Add(id => session.GetObjectByKey<Xpo.Post>(id, true), "DevExpress.XPO: GetObjectByKey<T>");
+                    tests.Add(id =>
+                    {
+                        CriteriaOperator findCriteria = new BinaryOperator()
+                        {
+                            OperatorType = BinaryOperatorType.Equal,
+                            LeftOperand = new OperandProperty("Id"),
+                            RightOperand = new ConstantValue(id)
+                        };
+                        session.FindObject<Xpo.Post>(findCriteria);
+                    }, "DevExpress.XPO: FindObject<T>");
+
+                }, "DevExpress.XPO");
 
                 // Subsonic isn't maintained anymore - doesn't import correctly
                 //Try(() =>

@@ -1,44 +1,14 @@
 [CmdletBinding(PositionalBinding=$false)]
 param(
-    [string] $Version,
-    [string] $BuildNumber,
     [bool] $CreatePackages,
     [bool] $RunTests = $true,
     [string] $PullRequestNumber
 )
 
-function CalculateVersion() {
-    if ($version) {
-        return $version
-    }
-
-    $semVersion = '';
-    $path = $pwd;
-    while (!$semVersion) {
-        if (Test-Path (Join-Path $path "semver.txt")) {
-            $semVersion = Get-Content (Join-Path $path "semver.txt")
-            break
-        }
-        if ($PSScriptRoot -eq $path) {
-            break
-        }
-        $path = Split-Path $path -Parent
-    }
-
-    if (!$semVersion) {
-        Write-Error "semver.txt was not found in $pwd or any parent directory"
-        Exit 1
-    }
-
-    return "$semVersion-$BuildNumber"
-}
-
 Write-Host "Run Parameters:" -ForegroundColor Cyan
-Write-Host "Version: $Version"
-Write-Host "BuildNumber: $BuildNumber"
-Write-Host "CreatePackages: $CreatePackages"
-Write-Host "RunTests: $RunTests"
-Write-Host "Base Version: $(CalculateVersion)"
+Write-Host "  CreatePackages: $CreatePackages"
+Write-Host "  RunTests: $RunTests"
+Write-Host "  dotnet --version:" (dotnet --version)
 
 $packageOutputFolder = "$PSScriptRoot\.nupkgs"
 $projectsToBuild =
@@ -54,26 +24,26 @@ $testsToRun =
     'Dapper.Tests',
     'Dapper.Tests.Contrib'
 
-if (!$Version -and !$BuildNumber) {
-    Write-Host "ERROR: You must supply either a -Version or -BuildNumber argument. `
-  Use -Version `"4.0.0`" for explicit version specification, or `
-  Use -BuildNumber `"12345`" for generation using <semver.txt>-<buildnumber>" -ForegroundColor Yellow
-    Exit 1
-}
-
 if ($PullRequestNumber) {
     Write-Host "Building for a pull request (#$PullRequestNumber), skipping packaging." -ForegroundColor Yellow
     $CreatePackages = $false
 }
 
-if ($RunTests) {   
-    dotnet restore /ConsoleLoggerParameters:Verbosity=Quiet
+Write-Host "Restoring all projects..." -ForegroundColor "Magenta"
+dotnet restore
+Write-Host "Done restoring." -ForegroundColor "Green"
+
+Write-Host "Building all projects..." -ForegroundColor "Magenta"
+dotnet build -c Release --no-restore /p:CI=true
+Write-Host "Done building." -ForegroundColor "Green"
+
+if ($RunTests) {
     foreach ($project in $testsToRun) {
         Write-Host "Running tests: $project (all frameworks)" -ForegroundColor "Magenta"
-        Push-Location "$project"
+        Push-Location ".\$project"
 
-        dotnet xunit
-        if ($LastExitCode -ne 0) { 
+        dotnet test -c Release
+        if ($LastExitCode -ne 0) {
             Write-Host "Error with tests, aborting build." -Foreground "Red"
             Pop-Location
             Exit 1
@@ -91,29 +61,11 @@ if ($CreatePackages) {
     Write-Host "done." -ForegroundColor "Green"
 
     Write-Host "Building all packages" -ForegroundColor "Green"
-}
 
-foreach ($project in $projectsToBuild) {
-    Write-Host "Working on $project`:" -ForegroundColor "Magenta"
-	
-	Push-Location ".\$project"
-
-    $semVer = CalculateVersion
-
-    Write-Host "  Restoring and packing $project... (Version:" -NoNewline -ForegroundColor "Magenta"
-    Write-Host $semVer -NoNewline -ForegroundColor "Cyan"
-    Write-Host ")" -ForegroundColor "Magenta"
-    
-    $targets = "Restore"
-    if ($CreatePackages) {
-        $targets += ";Pack"
+    foreach ($project in $projectsToBuild) {
+        Write-Host "Packing $project (dotnet pack)..." -ForegroundColor "Magenta"
+        dotnet pack ".\$project\$project.csproj" --no-build -c Release /p:PackageOutputPath=$packageOutputFolder /p:NoPackageAnalysis=true /p:CI=true
+        Write-Host ""
     }
-
-	dotnet msbuild "/t:$targets" "/p:Configuration=Release" "/p:Version=$semVer" "/p:PackageOutputPath=$packageOutputFolder" "/p:CI=true" "/p:NuGetBuildTasksPackTargets='000'"
-
-	Pop-Location
-
-    Write-Host "Done." -ForegroundColor "Green"
-    Write-Host ""
 }
 Write-Host "Build Complete." -ForegroundColor "Green"
